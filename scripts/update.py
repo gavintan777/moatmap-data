@@ -56,6 +56,8 @@ import io
 import json
 import sqlite3
 import sys
+import time
+import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -110,12 +112,30 @@ DECILE_EXPORTS = {
 }
 
 
-def fetch(base: str, path: str) -> bytes:
+def fetch(base: str, path: str, attempts: int = 2) -> bytes:
+    """GET one path. A server error (5xx) or a dropped connection is tried
+    once more; anything else, including a 404, raises at once."""
     req = urllib.request.Request(base + path, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        if resp.status != 200:
-            raise RuntimeError(f"{path}: HTTP {resp.status}")
-        return resp.read()
+    for attempt in range(attempts):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                if resp.status != 200:
+                    raise RuntimeError(f"{path}: HTTP {resp.status}")
+                return resp.read()
+        except urllib.error.HTTPError as exc:
+            if exc.code < 500 or attempt == attempts - 1:
+                raise
+        except urllib.error.URLError:
+            if attempt == attempts - 1:
+                raise
+        time.sleep(5)
+    raise AssertionError("unreachable")
+
+
+def _cell(text: str) -> str:
+    """A free-text cell that a spreadsheet would read as a formula (=, +, -, @
+    first) gets a leading apostrophe, so opening the CSV never runs it."""
+    return "'" + text if text[:1] in ("=", "+", "-", "@") else text
 
 
 def public_name(value: str) -> str:
@@ -164,9 +184,9 @@ def edition_rows(payload: dict) -> list[dict]:
                 "list": list_name,
                 "rank": int(r["rank"]),
                 "ticker": r["ticker"],
-                "name": r.get("name") or "",
+                "name": _cell(r.get("name") or ""),
                 "listing_market": listing_market,
-                "sector": r.get("sector") or "",
+                "sector": _cell(r.get("sector") or ""),
                 SCORE_NAME: _num(r.get(SITE_SCORE_NAME)),
                 "quality_rank": _num(r.get("quality_rank")),
                 "value_rank": _num(r.get("value_rank")),
@@ -174,14 +194,26 @@ def edition_rows(payload: dict) -> list[dict]:
                 "insider_buy": _flag(r, "insider_buy", listing_market),
                 "buyback": _flag(r, "buyback", listing_market),
                 "new_entry": "",  # set across months by mark_new_entries
-                "why": (r.get("why") or "").strip(),
+                "why": _cell((r.get("why") or "").strip()),
             })
     return out
 
 
 def payloads_from_api(base: str) -> list[dict]:
+    """Each market's newest edition. A market the editions list names but the
+    API no longer serves (404: dropped from the Best Stocks markets while its
+    rows remain) is skipped with a warning, so one market cannot stop the run;
+    its earlier months stay in the repo."""
     editions = json.loads(fetch(base, "/api/best-stocks/editions"))["editions"]
-    return [json.loads(fetch(base, f"/api/best-stocks/{market}")) for market in sorted(editions)]
+    payloads = []
+    for market in sorted(editions):
+        try:
+            payloads.append(json.loads(fetch(base, f"/api/best-stocks/{market}")))
+        except urllib.error.HTTPError as exc:
+            if exc.code != 404:
+                raise
+            print(f"warning: /api/best-stocks/{market} is 404, skipped", file=sys.stderr)
+    return payloads
 
 
 def payloads_from_db(db_path: Path) -> list[dict]:

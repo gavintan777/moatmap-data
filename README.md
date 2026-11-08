@@ -77,7 +77,7 @@ Each country edition lists companies above a market-cap floor set for that count
 
 ## Updates
 
-A GitHub Action (`.github/workflows/update.yml`) runs `scripts/update.py` on the 4th and 14th of each month, after each new Best Stocks edition and decile vintage, and commits whatever the site has published since. It reads only MoatMap's public endpoints, so anyone can run it. A past edition never changes, a vintage's deciles are never re-formed, and its returns are fixed once its window closes.
+A GitHub Action (`.github/workflows/update.yml`) runs `scripts/update.py` every Wednesday and commits whatever the site has published since, so each month's Best Stocks edition is caught while the site still serves it. It reads only MoatMap's public endpoints, so anyone can run it. A past edition never changes, a vintage's deciles are never re-formed, and its returns are fixed once its window closes.
 
 ## Licence and citation
 
