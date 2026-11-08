@@ -2,8 +2,9 @@
 Write MoatMap's two public datasets into a checkout of the moatmap-data repo.
 
 1. The decile tracker: the site's own public CSV exports, copied as served
-   (/api/decile-tracker/export.csv and /ai-cohorts.csv, both scopes). Nothing
-   is recomputed here, so the repo can never disagree with /decile-tracker.
+   (/api/decile-tracker/export.csv and /ai-cohorts.csv, both scopes) except
+   for the score's name in `rank_field`. Nothing is recomputed here, so the
+   repo can never disagree with /decile-tracker.
 2. The monthly Best Stocks lists: one row per stock per edition, for every
    country edition plus the GLOBAL edition's four pillar lists.
 
@@ -14,8 +15,19 @@ What the Best Stocks rows leave out, on purpose:
     which we show on the site but do not redistribute in bulk.
   - has_deep_dive: a site-internal flag.
 
+The score is published as `moatmap_score` (founder decision 2026-11-08): the
+site still calls it StockRank until its own rename ships, and a public
+dataset's column cannot be renamed later without breaking its users. Every
+place the site's data says `stockrank` (the Best Stocks column and list, the
+decile exports' `rank_field`) is relabelled here, and nothing else changes.
+
 Two derived columns and files, computed only from what is published:
-  - `new_entry` on each Best Stocks row: not on the same list the month before.
+  - `new_entry` on each Best Stocks row: not on the same list in that list's
+    previous edition (normally the month before; when a market skipped a
+    month, the edition before the gap).
+  - `insider_buy` / `buyback` are blank, not "false", where the row cannot
+    know: a payload without the flag, or a market with no insider or buyback
+    feed (Saudi Arabia and Vietnam).
   - `decile-tracker/summary-<scope>.csv`: decile 1 against decile 10 per
     vintage and score, with the ACWI ETF beside it.
 
@@ -45,15 +57,25 @@ import json
 import sqlite3
 import sys
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 
 SITE = "https://moatmap.ai"
 USER_AGENT = "moatmap-dataset-export/1.0"
 GLOBAL_KEY = "GLOBAL"
 
-# The country edition is a single list ranked on StockRank; the GLOBAL edition
+# The public name of the score the site calls StockRank (see the docstring).
+SCORE_NAME = "moatmap_score"
+SITE_SCORE_NAME = "stockrank"
+
+# The country edition is a single list ranked on the score; the GLOBAL edition
 # carries four lists, one per pillar, under `lists`.
-COUNTRY_LIST = "stockrank"
+COUNTRY_LIST = SCORE_NAME
+
+# Markets with no insider-trade or buyback feed, so a row there cannot say
+# "false" for either flag. Mirrors STOCKRANK_ONLY_MARKETS in config/settings.py
+# (this file also runs standalone in the public repo, so it cannot import it).
+NO_FEED_MARKETS = frozenset({"SA", "VN"})
 
 BEST_STOCKS_COLUMNS = [
     "edition_date",
@@ -64,7 +86,7 @@ BEST_STOCKS_COLUMNS = [
     "name",
     "listing_market",
     "sector",
-    "stockrank",
+    SCORE_NAME,
     "quality_rank",
     "value_rank",
     "momentum_rank",
@@ -96,8 +118,20 @@ def fetch(base: str, path: str) -> bytes:
         return resp.read()
 
 
+def public_name(value: str) -> str:
+    """The site's score name as the dataset publishes it; anything else as is."""
+    return SCORE_NAME if value == SITE_SCORE_NAME else value
+
+
 def _bool(v) -> str:
     return "true" if v else "false"
+
+
+def _flag(row: dict, key: str, market: str) -> str:
+    """A feed flag, blank where the row cannot know (see the module docstring)."""
+    if key not in row or row[key] is None or market in NO_FEED_MARKETS:
+        return ""
+    return _bool(row[key])
 
 
 def _num(v) -> str:
@@ -112,7 +146,7 @@ def edition_rows(payload: dict) -> list[dict]:
     date = str(payload["edition_date"])
     if edition == GLOBAL_KEY:
         lists = payload.get("lists") or {}
-        sources = [(name, rows) for name, rows in sorted(lists.items())]
+        sources = sorted((public_name(name), rows) for name, rows in lists.items())
     else:
         sources = [(COUNTRY_LIST, payload.get("stocks") or [])]
 
@@ -121,6 +155,9 @@ def edition_rows(payload: dict) -> list[dict]:
         for r in rows:
             if not r.get("ticker") or r.get("rank") is None:
                 raise ValueError(f"{date} {edition}: a row without ticker or rank")
+            # Editions before September 2026 carry no per-row market; a
+            # country edition lists only its own market's stocks.
+            listing_market = r.get("market") or ("" if edition == GLOBAL_KEY else edition)
             out.append({
                 "edition_date": date,
                 "edition": edition,
@@ -128,16 +165,14 @@ def edition_rows(payload: dict) -> list[dict]:
                 "rank": int(r["rank"]),
                 "ticker": r["ticker"],
                 "name": r.get("name") or "",
-                # Editions before September 2026 carry no per-row market; a
-                # country edition lists only its own market's stocks.
-                "listing_market": r.get("market") or ("" if edition == GLOBAL_KEY else edition),
+                "listing_market": listing_market,
                 "sector": r.get("sector") or "",
-                "stockrank": _num(r.get("stockrank")),
+                SCORE_NAME: _num(r.get(SITE_SCORE_NAME)),
                 "quality_rank": _num(r.get("quality_rank")),
                 "value_rank": _num(r.get("value_rank")),
                 "momentum_rank": _num(r.get("momentum_rank")),
-                "insider_buy": _bool(r.get("insider_buy")),
-                "buyback": _bool(r.get("buyback")),
+                "insider_buy": _flag(r, "insider_buy", listing_market),
+                "buyback": _flag(r, "buyback", listing_market),
                 "new_entry": "",  # set across months by mark_new_entries
                 "why": (r.get("why") or "").strip(),
             })
@@ -192,6 +227,10 @@ def existing_groups(out: Path) -> dict[tuple[str, str], list[dict]]:
     for path in sorted((out / "data" / "best-stocks" / "editions").glob("*.csv")):
         with path.open(encoding="utf-8", newline="") as f:
             for row in csv.DictReader(f):
+                # Files written before the rename carry the site's name.
+                if SCORE_NAME not in row and SITE_SCORE_NAME in row:
+                    row[SCORE_NAME] = row[SITE_SCORE_NAME]
+                row["list"] = public_name(row.get("list", ""))
                 row = {c: row.get(c, "") for c in BEST_STOCKS_COLUMNS}
                 row["rank"] = int(row["rank"])
                 groups.setdefault((row["edition_date"], row["edition"]), []).append(row)
@@ -199,8 +238,10 @@ def existing_groups(out: Path) -> dict[tuple[str, str], list[dict]]:
 
 
 def mark_new_entries(rows: list[dict]) -> None:
-    """new_entry: "true" when the ticker was not on the same list the month
-    before, "false" when it was, blank when that list has no earlier month."""
+    """new_entry: "true" when the ticker was not on the same list in that
+    list's previous edition, "false" when it was, blank when the list has no
+    earlier edition. A month a market skipped is not a gap here: the
+    comparison is with the edition before it."""
     by_list: dict[tuple[str, str], dict[str, set[str]]] = {}
     for r in rows:
         by_list.setdefault((r["edition"], r["list"]), {}).setdefault(r["edition_date"], set()).add(r["ticker"])
@@ -278,14 +319,40 @@ def decile_summary(rows: list[dict]) -> list[dict]:
     return out
 
 
-def write_deciles(out: Path, base: str) -> dict[str, int]:
-    counts = {}
+def fetch_deciles(base: str) -> dict[str, list[str]]:
+    """Every decile export, each checked, before anything is written: a bad
+    body (a challenge or error page served 200) leaves the repo untouched."""
+    bodies = {}
     for rel, path in DECILE_EXPORTS.items():
-        body = fetch(base, path).decode("utf-8")
-        lines = body.splitlines()
+        lines = fetch(base, path).decode("utf-8").splitlines()
         if len(lines) < 2 or not lines[0].startswith("regime_id,"):
             header = lines[0][:60] if lines else ""
             raise RuntimeError(f"{path}: not the expected CSV (header {header!r}, {len(lines)} lines)")
+        bodies[rel] = relabel_rank_field(lines)
+    return bodies
+
+
+def relabel_rank_field(lines: list[str]) -> list[str]:
+    """The export's `rank_field` cells under the public score name; every
+    other cell, and a file without that column, unchanged."""
+    rows = list(csv.reader(lines))
+    if "rank_field" not in rows[0]:
+        return lines
+    i = rows[0].index("rank_field")
+    buf = io.StringIO()
+    writer = csv.writer(buf, lineterminator="\n")
+    for n, row in enumerate(rows):
+        if n and len(row) > i:
+            row[i] = public_name(row[i])
+        writer.writerow(row)
+    return buf.getvalue().splitlines()
+
+
+def write_deciles(out: Path, base: str, bodies: dict[str, list[str]] | None = None) -> dict[str, int]:
+    if bodies is None:
+        bodies = fetch_deciles(base)
+    counts = {}
+    for rel, lines in bodies.items():
         target = out / "data" / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="")
@@ -298,6 +365,18 @@ def write_deciles(out: Path, base: str) -> dict[str, int]:
     return counts
 
 
+def editions_behind(api_payloads: list[dict], current_month: str) -> list[str]:
+    """The API serves only each market's newest edition, so a run that sees
+    last month's edition after this month's should have formed is the one
+    chance to notice: say which markets are behind (a market can also skip a
+    month on purpose, so this warns rather than fails)."""
+    return [
+        f"warning: {str(p['market']).upper()} newest edition is {p['edition_date']}, not {current_month}"
+        for p in api_payloads
+        if str(p["edition_date"]) < current_month
+    ]
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", required=True, type=Path, help="checkout of the moatmap-data repo")
@@ -305,10 +384,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--base-url", default=SITE)
     args = ap.parse_args(argv)
 
+    # Fetch and check everything first, so a failure leaves the repo as it was.
     db_payloads = payloads_from_db(args.from_db) if args.from_db else []
     api_payloads = payloads_from_api(args.base_url)
+    decile_bodies = fetch_deciles(args.base_url)
+    for line in editions_behind(api_payloads, datetime.now(timezone.utc).strftime("%Y-%m-01")):
+        print(line, file=sys.stderr)
     months = write_best_stocks(args.out, merge_payloads(db_payloads, api_payloads))
-    deciles = write_deciles(args.out, args.base_url)
+    deciles = write_deciles(args.out, args.base_url, decile_bodies)
 
     for date, n in months.items():
         print(f"best-stocks {date}: {n} rows")

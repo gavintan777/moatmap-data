@@ -18,12 +18,12 @@ base = "https://raw.githubusercontent.com/gavintan777/moatmap-data/main/data"
 
 # Does the top decile beat the bottom one? One row per vintage and score.
 summary = pd.read_csv(f"{base}/decile-tracker/summary-investable.csv")
-print(summary[summary.rank_field == "stockrank"])
+print(summary[summary.rank_field == "moatmap_score"])
 
 # This month's newcomers to the Best Stocks lists.
 best = pd.read_csv(f"{base}/best-stocks/best-stocks.csv")
 latest = best[best.edition_date == best.edition_date.max()]
-print(latest[latest.new_entry == True][["edition", "rank", "ticker", "name", "stockrank"]])
+print(latest[latest.new_entry == True][["edition", "rank", "ticker", "name", "moatmap_score"]])
 ```
 
 The files are plain UTF-8 CSV, so they open in Excel, Google Sheets or R as they are. `datapackage.json` describes every column in the [Frictionless Data](https://specs.frictionlessdata.io/data-package/) format.
@@ -46,7 +46,7 @@ The files are plain UTF-8 CSV, so they open in Excel, Google Sheets or R as they
 | `regime_id` | The scoring version the vintage was formed under. Only the current version is published; a change to the scoring starts a new series. |
 | `vintage_date` | The day the deciles were formed (monthly, around the 10th). |
 | `decile` | 1 to 10, where 1 holds the highest scores and 10 the lowest. |
-| `rank_field` | The score the deciles were formed on: `stockrank`, `quality_rank`, `value_rank`, `momentum_rank`, or a two-factor blend (`qv`, `qm`, `vm`). |
+| `rank_field` | The score the deciles were formed on: `moatmap_score`, `quality_rank`, `value_rank`, `momentum_rank`, or a two-factor blend (`qv`, `qm`, `vm`). |
 | `scope` | `investable` or `full`. |
 | `period_end`, `period_days` | The end of the return window (the next vintage's date) and its length in days. |
 | `n_formed`, `n_stocks`, `coverage` | Companies in the decile when formed, companies with a price at `period_end`, and the share of the two. A company that shrinks or stops trading stays in its vintage. |
@@ -64,13 +64,13 @@ The AI cohort files carry `cohort_key` and `cohort_label` in place of `decile` a
 |---|---|
 | `edition_date` | The month of the edition (the 1st). |
 | `edition` | The country edition (`US`, `MY`, `JP`, ...) or `GLOBAL`. |
-| `list` | `stockrank` for a country edition. The global edition has one list per pillar: `stockrank`, `quality_rank`, `value_rank`, `momentum_rank`. |
+| `list` | `moatmap_score` for a country edition. The global edition has one list per pillar: `moatmap_score`, `quality_rank`, `value_rank`, `momentum_rank`. |
 | `rank` | 1 to 25 within the list. |
 | `ticker`, `name`, `listing_market`, `sector` | The company. Tickers use Yahoo Finance suffixes (`4324.KL`, `7203.T`). |
-| `stockrank` | The overall score, 0 to 100, a percentile against every ranked company. |
+| `moatmap_score` | The overall MoatMap Score, 0 to 100, a percentile against every ranked company. |
 | `quality_rank`, `value_rank`, `momentum_rank` | The three pillar scores, 0 to 100, each ranked against the company's sector peers. |
-| `insider_buy`, `buyback` | Whether directors bought shares, or the company bought back its own, in the window the edition looked at. |
-| `new_entry` | `true` if the company was not on the same list the month before, `false` if it was, empty for a list's first month here. |
+| `insider_buy`, `buyback` | Whether directors bought shares, or the company bought back its own, in the window the edition looked at. Blank where it cannot be known: Saudi Arabia and Vietnam have no insider or buyback feed. |
+| `new_entry` | `true` if the company was not on the same list in its previous edition (normally the month before), `false` if it was, empty for a list's first edition here. |
 | `why` | One line on what drove the score. Editions before September 2026 have none. |
 
 Each country edition lists companies above a market-cap floor set for that country. The site states the floor on each country's page. Valuation figures the site shows beside each company (market cap, P/E, P/B, dividend yield) come from a third-party data vendor and are not included here.

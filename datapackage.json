@@ -52,7 +52,7 @@
           {
             "name": "rank_field",
             "type": "string",
-            "description": "Score the deciles were formed on: stockrank, quality_rank, value_rank, momentum_rank, qv, qm, vm"
+            "description": "Score the deciles were formed on: moatmap_score, quality_rank, value_rank, momentum_rank, qv, qm, vm"
           },
           {
             "name": "scope",
@@ -159,7 +159,7 @@
           {
             "name": "rank_field",
             "type": "string",
-            "description": "Score the deciles were formed on: stockrank, quality_rank, value_rank, momentum_rank, qv, qm, vm"
+            "description": "Score the deciles were formed on: moatmap_score, quality_rank, value_rank, momentum_rank, qv, qm, vm"
           },
           {
             "name": "scope",
@@ -609,7 +609,7 @@
           {
             "name": "list",
             "type": "string",
-            "description": "stockrank for a country edition; GLOBAL has stockrank, quality_rank, value_rank, momentum_rank"
+            "description": "moatmap_score for a country edition; GLOBAL has moatmap_score, quality_rank, value_rank, momentum_rank"
           },
           {
             "name": "rank",
@@ -637,7 +637,7 @@
             "description": "Sector"
           },
           {
-            "name": "stockrank",
+            "name": "moatmap_score",
             "type": "number",
             "description": "Overall score, 0 to 100, percentile against every ranked company"
           },
