@@ -1,0 +1,683 @@
+{
+  "name": "moatmap-data",
+  "title": "MoatMap open data: decile tracker and monthly Best Stocks lists",
+  "description": "Out-of-sample decile returns for MoatMap's Quality, Value and Momentum ranking, and the monthly top-25 lists by country. Research data, not investment advice.",
+  "homepage": "https://moatmap.ai",
+  "licenses": [
+    {
+      "name": "CC-BY-4.0",
+      "path": "https://creativecommons.org/licenses/by/4.0/",
+      "title": "Creative Commons Attribution 4.0"
+    }
+  ],
+  "sources": [
+    {
+      "title": "MoatMap",
+      "path": "https://moatmap.ai"
+    }
+  ],
+  "keywords": [
+    "factor investing",
+    "quality",
+    "value",
+    "momentum",
+    "stock ranking",
+    "out-of-sample"
+  ],
+  "resources": [
+    {
+      "name": "deciles-investable",
+      "path": "data/decile-tracker/deciles-investable.csv",
+      "format": "csv",
+      "mediatype": "text/csv",
+      "encoding": "utf-8",
+      "description": "Decile returns, investable universe (headline series)",
+      "schema": {
+        "fields": [
+          {
+            "name": "regime_id",
+            "type": "string",
+            "description": "Scoring version the vintage was formed under"
+          },
+          {
+            "name": "vintage_date",
+            "type": "date",
+            "description": "Day the deciles were formed"
+          },
+          {
+            "name": "decile",
+            "type": "integer",
+            "description": "1 = highest scores, 10 = lowest"
+          },
+          {
+            "name": "rank_field",
+            "type": "string",
+            "description": "Score the deciles were formed on: stockrank, quality_rank, value_rank, momentum_rank, qv, qm, vm"
+          },
+          {
+            "name": "scope",
+            "type": "string",
+            "description": "investable (market cap >= $200M and >= $1M a day traded at formation) or full"
+          },
+          {
+            "name": "period_end",
+            "type": "date",
+            "description": "End of the return window (the next vintage)"
+          },
+          {
+            "name": "period_days",
+            "type": "integer",
+            "description": "Length of the window in days"
+          },
+          {
+            "name": "n_formed",
+            "type": "integer",
+            "description": "Companies in the decile at formation"
+          },
+          {
+            "name": "n_stocks",
+            "type": "integer",
+            "description": "Companies with a price at period_end"
+          },
+          {
+            "name": "coverage",
+            "type": "number",
+            "description": "n_stocks / n_formed"
+          },
+          {
+            "name": "n_price_fallback",
+            "type": "integer",
+            "description": "Companies priced from stored daily prices"
+          },
+          {
+            "name": "avg_return_local",
+            "type": "number",
+            "description": "Equal-weighted total return, local currency"
+          },
+          {
+            "name": "avg_return_usd",
+            "type": "number",
+            "description": "Equal-weighted total return, US dollars"
+          },
+          {
+            "name": "median_return_usd",
+            "type": "number",
+            "description": "Median total return, US dollars"
+          },
+          {
+            "name": "hit_rate",
+            "type": "number",
+            "description": "Share of the decile with a positive dollar return"
+          },
+          {
+            "name": "spy_return",
+            "type": "number",
+            "description": "SPY ETF return over the window"
+          },
+          {
+            "name": "qqq_return",
+            "type": "number",
+            "description": "QQQ ETF return over the window"
+          },
+          {
+            "name": "acwi_return",
+            "type": "number",
+            "description": "ACWI ETF return over the window"
+          },
+          {
+            "name": "computed_at",
+            "type": "datetime",
+            "description": "When the row was computed (UTC)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "deciles-full",
+      "path": "data/decile-tracker/deciles-full.csv",
+      "format": "csv",
+      "mediatype": "text/csv",
+      "encoding": "utf-8",
+      "description": "Decile returns, every ranked company",
+      "schema": {
+        "fields": [
+          {
+            "name": "regime_id",
+            "type": "string",
+            "description": "Scoring version the vintage was formed under"
+          },
+          {
+            "name": "vintage_date",
+            "type": "date",
+            "description": "Day the deciles were formed"
+          },
+          {
+            "name": "decile",
+            "type": "integer",
+            "description": "1 = highest scores, 10 = lowest"
+          },
+          {
+            "name": "rank_field",
+            "type": "string",
+            "description": "Score the deciles were formed on: stockrank, quality_rank, value_rank, momentum_rank, qv, qm, vm"
+          },
+          {
+            "name": "scope",
+            "type": "string",
+            "description": "investable (market cap >= $200M and >= $1M a day traded at formation) or full"
+          },
+          {
+            "name": "period_end",
+            "type": "date",
+            "description": "End of the return window (the next vintage)"
+          },
+          {
+            "name": "period_days",
+            "type": "integer",
+            "description": "Length of the window in days"
+          },
+          {
+            "name": "n_formed",
+            "type": "integer",
+            "description": "Companies in the decile at formation"
+          },
+          {
+            "name": "n_stocks",
+            "type": "integer",
+            "description": "Companies with a price at period_end"
+          },
+          {
+            "name": "coverage",
+            "type": "number",
+            "description": "n_stocks / n_formed"
+          },
+          {
+            "name": "n_price_fallback",
+            "type": "integer",
+            "description": "Companies priced from stored daily prices"
+          },
+          {
+            "name": "avg_return_local",
+            "type": "number",
+            "description": "Equal-weighted total return, local currency"
+          },
+          {
+            "name": "avg_return_usd",
+            "type": "number",
+            "description": "Equal-weighted total return, US dollars"
+          },
+          {
+            "name": "median_return_usd",
+            "type": "number",
+            "description": "Median total return, US dollars"
+          },
+          {
+            "name": "hit_rate",
+            "type": "number",
+            "description": "Share of the decile with a positive dollar return"
+          },
+          {
+            "name": "spy_return",
+            "type": "number",
+            "description": "SPY ETF return over the window"
+          },
+          {
+            "name": "qqq_return",
+            "type": "number",
+            "description": "QQQ ETF return over the window"
+          },
+          {
+            "name": "acwi_return",
+            "type": "number",
+            "description": "ACWI ETF return over the window"
+          },
+          {
+            "name": "computed_at",
+            "type": "datetime",
+            "description": "When the row was computed (UTC)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "summary-investable",
+      "path": "data/decile-tracker/summary-investable.csv",
+      "format": "csv",
+      "mediatype": "text/csv",
+      "encoding": "utf-8",
+      "description": "Decile 1 against decile 10 per vintage and score, investable",
+      "schema": {
+        "fields": [
+          {
+            "name": "vintage_date",
+            "type": "date",
+            "description": "Day the deciles were formed"
+          },
+          {
+            "name": "period_end",
+            "type": "date",
+            "description": "End of the return window"
+          },
+          {
+            "name": "period_days",
+            "type": "integer",
+            "description": "Length of the window in days"
+          },
+          {
+            "name": "rank_field",
+            "type": "string",
+            "description": "Score the deciles were formed on"
+          },
+          {
+            "name": "scope",
+            "type": "string",
+            "description": "investable or full"
+          },
+          {
+            "name": "top_decile_return_usd",
+            "type": "number",
+            "description": "Decile 1 (highest scores) average dollar total return"
+          },
+          {
+            "name": "bottom_decile_return_usd",
+            "type": "number",
+            "description": "Decile 10 (lowest scores) average dollar total return"
+          },
+          {
+            "name": "spread_usd",
+            "type": "number",
+            "description": "Decile 1 minus decile 10"
+          },
+          {
+            "name": "top_decile_hit_rate",
+            "type": "number",
+            "description": "Share of decile 1 with a positive dollar return"
+          },
+          {
+            "name": "acwi_return",
+            "type": "number",
+            "description": "ACWI ETF return over the window"
+          },
+          {
+            "name": "top_decile_minus_acwi",
+            "type": "number",
+            "description": "Decile 1 minus ACWI"
+          }
+        ]
+      }
+    },
+    {
+      "name": "summary-full",
+      "path": "data/decile-tracker/summary-full.csv",
+      "format": "csv",
+      "mediatype": "text/csv",
+      "encoding": "utf-8",
+      "description": "Decile 1 against decile 10 per vintage and score, full universe",
+      "schema": {
+        "fields": [
+          {
+            "name": "vintage_date",
+            "type": "date",
+            "description": "Day the deciles were formed"
+          },
+          {
+            "name": "period_end",
+            "type": "date",
+            "description": "End of the return window"
+          },
+          {
+            "name": "period_days",
+            "type": "integer",
+            "description": "Length of the window in days"
+          },
+          {
+            "name": "rank_field",
+            "type": "string",
+            "description": "Score the deciles were formed on"
+          },
+          {
+            "name": "scope",
+            "type": "string",
+            "description": "investable or full"
+          },
+          {
+            "name": "top_decile_return_usd",
+            "type": "number",
+            "description": "Decile 1 (highest scores) average dollar total return"
+          },
+          {
+            "name": "bottom_decile_return_usd",
+            "type": "number",
+            "description": "Decile 10 (lowest scores) average dollar total return"
+          },
+          {
+            "name": "spread_usd",
+            "type": "number",
+            "description": "Decile 1 minus decile 10"
+          },
+          {
+            "name": "top_decile_hit_rate",
+            "type": "number",
+            "description": "Share of decile 1 with a positive dollar return"
+          },
+          {
+            "name": "acwi_return",
+            "type": "number",
+            "description": "ACWI ETF return over the window"
+          },
+          {
+            "name": "top_decile_minus_acwi",
+            "type": "number",
+            "description": "Decile 1 minus ACWI"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ai-cohorts-investable",
+      "path": "data/decile-tracker/ai-cohorts-investable.csv",
+      "format": "csv",
+      "mediatype": "text/csv",
+      "encoding": "utf-8",
+      "description": "Returns by AI review verdict, investable",
+      "schema": {
+        "fields": [
+          {
+            "name": "regime_id",
+            "type": "string",
+            "description": "Scoring version the vintage was formed under"
+          },
+          {
+            "name": "cohort_key",
+            "type": "string",
+            "description": "AI review cohort key"
+          },
+          {
+            "name": "cohort_label",
+            "type": "string",
+            "description": "AI review cohort label"
+          },
+          {
+            "name": "scope",
+            "type": "string",
+            "description": "investable (market cap >= $200M and >= $1M a day traded at formation) or full"
+          },
+          {
+            "name": "vintage_date",
+            "type": "date",
+            "description": "Day the deciles were formed"
+          },
+          {
+            "name": "period_end",
+            "type": "date",
+            "description": "End of the return window (the next vintage)"
+          },
+          {
+            "name": "period_days",
+            "type": "integer",
+            "description": "Length of the window in days"
+          },
+          {
+            "name": "n_formed",
+            "type": "integer",
+            "description": "Companies in the decile at formation"
+          },
+          {
+            "name": "n_stocks",
+            "type": "integer",
+            "description": "Companies with a price at period_end"
+          },
+          {
+            "name": "coverage",
+            "type": "number",
+            "description": "n_stocks / n_formed"
+          },
+          {
+            "name": "n_price_fallback",
+            "type": "integer",
+            "description": "Companies priced from stored daily prices"
+          },
+          {
+            "name": "avg_return_local",
+            "type": "number",
+            "description": "Equal-weighted total return, local currency"
+          },
+          {
+            "name": "avg_return_usd",
+            "type": "number",
+            "description": "Equal-weighted total return, US dollars"
+          },
+          {
+            "name": "median_return_usd",
+            "type": "number",
+            "description": "Median total return, US dollars"
+          },
+          {
+            "name": "hit_rate",
+            "type": "number",
+            "description": "Share of the decile with a positive dollar return"
+          },
+          {
+            "name": "spy_return",
+            "type": "number",
+            "description": "SPY ETF return over the window"
+          },
+          {
+            "name": "qqq_return",
+            "type": "number",
+            "description": "QQQ ETF return over the window"
+          },
+          {
+            "name": "acwi_return",
+            "type": "number",
+            "description": "ACWI ETF return over the window"
+          },
+          {
+            "name": "computed_at",
+            "type": "datetime",
+            "description": "When the row was computed (UTC)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ai-cohorts-full",
+      "path": "data/decile-tracker/ai-cohorts-full.csv",
+      "format": "csv",
+      "mediatype": "text/csv",
+      "encoding": "utf-8",
+      "description": "Returns by AI review verdict, full universe",
+      "schema": {
+        "fields": [
+          {
+            "name": "regime_id",
+            "type": "string",
+            "description": "Scoring version the vintage was formed under"
+          },
+          {
+            "name": "cohort_key",
+            "type": "string",
+            "description": "AI review cohort key"
+          },
+          {
+            "name": "cohort_label",
+            "type": "string",
+            "description": "AI review cohort label"
+          },
+          {
+            "name": "scope",
+            "type": "string",
+            "description": "investable (market cap >= $200M and >= $1M a day traded at formation) or full"
+          },
+          {
+            "name": "vintage_date",
+            "type": "date",
+            "description": "Day the deciles were formed"
+          },
+          {
+            "name": "period_end",
+            "type": "date",
+            "description": "End of the return window (the next vintage)"
+          },
+          {
+            "name": "period_days",
+            "type": "integer",
+            "description": "Length of the window in days"
+          },
+          {
+            "name": "n_formed",
+            "type": "integer",
+            "description": "Companies in the decile at formation"
+          },
+          {
+            "name": "n_stocks",
+            "type": "integer",
+            "description": "Companies with a price at period_end"
+          },
+          {
+            "name": "coverage",
+            "type": "number",
+            "description": "n_stocks / n_formed"
+          },
+          {
+            "name": "n_price_fallback",
+            "type": "integer",
+            "description": "Companies priced from stored daily prices"
+          },
+          {
+            "name": "avg_return_local",
+            "type": "number",
+            "description": "Equal-weighted total return, local currency"
+          },
+          {
+            "name": "avg_return_usd",
+            "type": "number",
+            "description": "Equal-weighted total return, US dollars"
+          },
+          {
+            "name": "median_return_usd",
+            "type": "number",
+            "description": "Median total return, US dollars"
+          },
+          {
+            "name": "hit_rate",
+            "type": "number",
+            "description": "Share of the decile with a positive dollar return"
+          },
+          {
+            "name": "spy_return",
+            "type": "number",
+            "description": "SPY ETF return over the window"
+          },
+          {
+            "name": "qqq_return",
+            "type": "number",
+            "description": "QQQ ETF return over the window"
+          },
+          {
+            "name": "acwi_return",
+            "type": "number",
+            "description": "ACWI ETF return over the window"
+          },
+          {
+            "name": "computed_at",
+            "type": "datetime",
+            "description": "When the row was computed (UTC)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "best-stocks",
+      "path": "data/best-stocks/best-stocks.csv",
+      "format": "csv",
+      "mediatype": "text/csv",
+      "encoding": "utf-8",
+      "description": "Every monthly Best Stocks edition",
+      "schema": {
+        "fields": [
+          {
+            "name": "edition_date",
+            "type": "date",
+            "description": "Month of the edition (the 1st)"
+          },
+          {
+            "name": "edition",
+            "type": "string",
+            "description": "Country edition code (US, MY, JP, ...) or GLOBAL"
+          },
+          {
+            "name": "list",
+            "type": "string",
+            "description": "stockrank for a country edition; GLOBAL has stockrank, quality_rank, value_rank, momentum_rank"
+          },
+          {
+            "name": "rank",
+            "type": "integer",
+            "description": "1 to 25 within the list"
+          },
+          {
+            "name": "ticker",
+            "type": "string",
+            "description": "Yahoo Finance style ticker"
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "description": "Company name"
+          },
+          {
+            "name": "listing_market",
+            "type": "string",
+            "description": "Market of the listing"
+          },
+          {
+            "name": "sector",
+            "type": "string",
+            "description": "Sector"
+          },
+          {
+            "name": "stockrank",
+            "type": "number",
+            "description": "Overall score, 0 to 100, percentile against every ranked company"
+          },
+          {
+            "name": "quality_rank",
+            "type": "number",
+            "description": "Quality score, 0 to 100, against sector peers"
+          },
+          {
+            "name": "value_rank",
+            "type": "number",
+            "description": "Value score, 0 to 100, against sector peers"
+          },
+          {
+            "name": "momentum_rank",
+            "type": "number",
+            "description": "Momentum score, 0 to 100, against sector peers"
+          },
+          {
+            "name": "insider_buy",
+            "type": "boolean",
+            "description": "Directors bought shares in the edition's window"
+          },
+          {
+            "name": "buyback",
+            "type": "boolean",
+            "description": "The company bought back shares in the edition's window"
+          },
+          {
+            "name": "new_entry",
+            "type": "boolean",
+            "description": "Not on the same list the month before; empty when the list has no earlier month"
+          },
+          {
+            "name": "why",
+            "type": "string",
+            "description": "What drove the score; empty before September 2026"
+          }
+        ]
+      }
+    }
+  ]
+}

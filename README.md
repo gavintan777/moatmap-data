@@ -9,12 +9,32 @@ Both are the same numbers the site publishes at [moatmap.ai/decile-tracker](http
 
 This is research data, not investment advice.
 
+## Quick start
+
+```python
+import pandas as pd
+
+base = "https://raw.githubusercontent.com/gavintan777/moatmap-data/main/data"
+
+# Does the top decile beat the bottom one? One row per vintage and score.
+summary = pd.read_csv(f"{base}/decile-tracker/summary-investable.csv")
+print(summary[summary.rank_field == "stockrank"])
+
+# This month's newcomers to the Best Stocks lists.
+best = pd.read_csv(f"{base}/best-stocks/best-stocks.csv")
+latest = best[best.edition_date == best.edition_date.max()]
+print(latest[latest.new_entry == True][["edition", "rank", "ticker", "name", "stockrank"]])
+```
+
+The files are plain UTF-8 CSV, so they open in Excel, Google Sheets or R as they are. `datapackage.json` describes every column in the [Frictionless Data](https://specs.frictionlessdata.io/data-package/) format.
+
 ## Files
 
 | File | What it holds |
 |---|---|
 | `data/decile-tracker/deciles-investable.csv` | Decile returns for the investable universe: market cap of at least $200M and at least $1M a day traded, judged when each vintage is formed. This is the headline series. |
 | `data/decile-tracker/deciles-full.csv` | The same for every ranked company, thin and illiquid ones included. Stale prices inflate small-company returns, so read it with care. |
+| `data/decile-tracker/summary-investable.csv`, `summary-full.csv` | One row per vintage and score: decile 1 against decile 10, and decile 1 against the MSCI ACWI ETF. Derived from the decile files. |
 | `data/decile-tracker/ai-cohorts-*.csv` | Returns for groups formed on the site's AI review verdict (deep-review picks, neutral, concerns), both scopes. |
 | `data/best-stocks/best-stocks.csv` | Every Best Stocks edition in one file. |
 | `data/best-stocks/editions/YYYY-MM-01.csv` | One file per monthly edition. |
@@ -50,13 +70,14 @@ The AI cohort files carry `cohort_key` and `cohort_label` in place of `decile` a
 | `stockrank` | The overall score, 0 to 100, a percentile against every ranked company. |
 | `quality_rank`, `value_rank`, `momentum_rank` | The three pillar scores, 0 to 100, each ranked against the company's sector peers. |
 | `insider_buy`, `buyback` | Whether directors bought shares, or the company bought back its own, in the window the edition looked at. |
+| `new_entry` | `true` if the company was not on the same list the month before, `false` if it was, empty for a list's first month here. |
 | `why` | One line on what drove the score. Editions before September 2026 have none. |
 
 Each country edition lists companies above a market-cap floor set for that country. The site states the floor on each country's page. Valuation figures the site shows beside each company (market cap, P/E, P/B, dividend yield) come from a third-party data vendor and are not included here.
 
 ## Updates
 
-The files are refreshed monthly, after each new decile vintage and Best Stocks edition. A past edition never changes, a vintage's deciles are never re-formed, and its returns are fixed once its window closes.
+A GitHub Action (`.github/workflows/update.yml`) runs `scripts/update.py` on the 4th and 14th of each month, after each new Best Stocks edition and decile vintage, and commits whatever the site has published since. It reads only MoatMap's public endpoints, so anyone can run it. A past edition never changes, a vintage's deciles are never re-formed, and its returns are fixed once its window closes.
 
 ## Licence and citation
 
