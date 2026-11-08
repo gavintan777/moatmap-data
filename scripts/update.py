@@ -284,7 +284,8 @@ def write_deciles(out: Path, base: str) -> dict[str, int]:
         body = fetch(base, path).decode("utf-8")
         lines = body.splitlines()
         if len(lines) < 2 or not lines[0].startswith("regime_id,"):
-            raise RuntimeError(f"{path}: not the expected CSV (header {lines[0][:60]!r})")
+            header = lines[0][:60] if lines else ""
+            raise RuntimeError(f"{path}: not the expected CSV (header {header!r}, {len(lines)} lines)")
         target = out / "data" / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="")
