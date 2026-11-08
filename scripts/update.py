@@ -16,8 +16,9 @@ What the Best Stocks rows leave out, on purpose:
   - has_deep_dive: a site-internal flag.
 
 The score is published as `moatmap_score` (founder decision 2026-11-08): the
-site still calls it StockRank until its own rename ships, and a public
-dataset's column cannot be renamed later without breaking its users. Every
+site's pages call it the MoatMap Score, its API fields still say `stockrank`,
+and a public dataset's column cannot be renamed later without breaking its
+users. Every
 place the site's data says `stockrank` (the Best Stocks column and list, the
 decile exports' `rank_field`) is relabelled here, and nothing else changes.
 
