@@ -1,7 +1,7 @@
 {
   "name": "moatmap-data",
-  "title": "MoatMap open data: decile tracker and monthly Best Stocks lists",
-  "description": "Out-of-sample decile returns for MoatMap's Quality, Value and Momentum ranking, and the monthly top-25 lists by country. Research data, not investment advice.",
+  "title": "MoatMap open data: decile tracker, monthly Best Stocks lists and covered companies",
+  "description": "Out-of-sample decile returns for MoatMap's Quality, Value and Momentum ranking, the monthly top-25 lists by country, and the list of companies covered. Research data, not investment advice.",
   "homepage": "https://moatmap.ai",
   "licenses": [
     {
@@ -675,6 +675,63 @@
             "name": "why",
             "type": "string",
             "description": "What drove the score; empty before September 2026"
+          }
+        ]
+      }
+    },
+    {
+      "name": "companies",
+      "path": "data/companies/companies.csv",
+      "format": "csv",
+      "mediatype": "text/csv",
+      "encoding": "utf-8",
+      "description": "Every company MoatMap covers, one row each, refreshed weekly from the week's Saturday scoring. Market cap of at least US$50M (US$25M in the UK and Canada, US$5M in Poland) and at least US$10K a day traded; no scores, caps or prices.",
+      "schema": {
+        "fields": [
+          {
+            "name": "ticker",
+            "type": "string",
+            "description": "Home listing, Yahoo Finance style ticker"
+          },
+          {
+            "name": "company_name",
+            "type": "string",
+            "description": "Listed name"
+          },
+          {
+            "name": "native_name",
+            "type": "string",
+            "description": "Name in its home script (KR, JP, CN, TW); empty elsewhere"
+          },
+          {
+            "name": "market",
+            "type": "string",
+            "description": "Market code of the home listing (US, ES, MY, ...)"
+          },
+          {
+            "name": "market_name",
+            "type": "string",
+            "description": "Market name"
+          },
+          {
+            "name": "country",
+            "type": "string",
+            "description": "Where the company is based; can differ from the market"
+          },
+          {
+            "name": "sector",
+            "type": "string",
+            "description": "Sector the company is scored in; for a not-ranked company, its data vendor sector, or empty"
+          },
+          {
+            "name": "other_listings",
+            "type": "string",
+            "description": "The company's other lines on the site, separated by ;"
+          },
+          {
+            "name": "not_ranked",
+            "type": "string",
+            "description": "fund, investment_company or preferred when listed but not ranked; empty for a ranked company"
           }
         ]
       }

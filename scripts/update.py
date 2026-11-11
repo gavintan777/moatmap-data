@@ -1,5 +1,5 @@
 """
-Write MoatMap's two public datasets into a checkout of the moatmap-data repo.
+Write MoatMap's public datasets into a checkout of the moatmap-data repo.
 
 1. The decile tracker: the site's own public CSV exports, copied as served
    (/api/decile-tracker/export.csv and /ai-cohorts.csv, both scopes) except
@@ -7,6 +7,13 @@ Write MoatMap's two public datasets into a checkout of the moatmap-data repo.
    repo can never disagree with /decile-tracker.
 2. The monthly Best Stocks lists: one row per stock per edition, for every
    country edition plus the GLOBAL edition's four pillar lists.
+3. The covered companies (2026-11-11): /api/companies.csv as served, one row
+   per company the site covers (ticker, names, market, country, sector, its
+   other listings, and why it is not ranked if it is not). Identity and
+   classification only: no score, cap or price. The site changes it once a
+   week (the week's Saturday scoring) and each run replaces it whole; a body that is not the expected
+   CSV, or is far shorter than the universe, is refused before anything is
+   written.
 
 What the Best Stocks rows leave out, on purpose:
   - `signal` (Strong Buy / Buy / ...): readers never see the band names
@@ -398,6 +405,54 @@ def write_deciles(out: Path, base: str, bodies: dict[str, list[str]] | None = No
     return counts
 
 
+COMPANIES_PATH = "/api/companies.csv"
+COMPANIES_FILE = "companies/companies.csv"
+COMPANIES_COLUMNS = [
+    "ticker", "company_name", "native_name", "market", "market_name",
+    "country", "sector", "other_listings", "not_ranked",
+]
+# The site covers ~26,000 companies; a body under this is a partial or broken
+# answer, and writing it would make most of the universe look delisted.
+COMPANIES_MIN_ROWS = 20_000
+
+
+def fetch_companies(base: str) -> tuple[str, int] | None:
+    """The companies CSV body as served and its record count, checked, or
+    None when the site does not serve it yet (404: the route ships with the
+    site, the repo can run first). The body is kept byte for byte: splitting
+    it into lines would also split on characters a quoted name may hold."""
+    try:
+        body = fetch(base, COMPANIES_PATH).decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        if exc.code != 404:
+            raise
+        print(f"warning: {COMPANIES_PATH} is 404, companies list not updated", file=sys.stderr)
+        return None
+    records = list(csv.reader(io.StringIO(body, newline="")))
+    header = records[0] if records else []
+    # The excluded-column check comes first so a score column is refused by
+    # name; the exact header match after it refuses everything else.
+    leaked = EXCLUDED_FIELDS.intersection(header) | {"stockrank", SCORE_NAME}.intersection(header)
+    if leaked:
+        raise RuntimeError(f"{COMPANIES_PATH}: excluded column(s) {sorted(leaked)}")
+    if header != COMPANIES_COLUMNS:
+        raise RuntimeError(f"{COMPANIES_PATH}: unexpected header {header[:4]!r}")
+    count = len(records) - 1
+    if count < COMPANIES_MIN_ROWS:
+        raise RuntimeError(f"{COMPANIES_PATH}: {count} rows, under {COMPANIES_MIN_ROWS}")
+    return body, count
+
+
+def write_companies(out: Path, fetched: tuple[str, int] | None) -> int | None:
+    if fetched is None:
+        return None
+    body, count = fetched
+    target = out / "data" / COMPANIES_FILE
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(body if body.endswith("\n") else body + "\n", encoding="utf-8", newline="")
+    return count
+
+
 def editions_behind(api_payloads: list[dict], current_month: str) -> list[str]:
     """The API serves only each market's newest edition, so a run that sees
     last month's edition after this month's should have formed is the one
@@ -421,15 +476,32 @@ def main(argv: list[str] | None = None) -> int:
     db_payloads = payloads_from_db(args.from_db) if args.from_db else []
     api_payloads = payloads_from_api(args.base_url)
     decile_bodies = fetch_deciles(args.base_url)
+    # A refused or failed companies list skips only that file (the published
+    # one stays) and fails the run at the end: the two older datasets do not
+    # wait on it (red-team review, 2026-11-11).
+    companies_error = None
+    try:
+        company_lines = fetch_companies(args.base_url)
+    except Exception as exc:  # any failure here (timeout, bad bytes, refusal) skips one file
+        company_lines, companies_error = None, exc
+        print(f"error: companies list not updated: {exc!r}", file=sys.stderr)
     for line in editions_behind(api_payloads, datetime.now(timezone.utc).strftime("%Y-%m-01")):
         print(line, file=sys.stderr)
     months = write_best_stocks(args.out, merge_payloads(db_payloads, api_payloads))
     deciles = write_deciles(args.out, args.base_url, decile_bodies)
+    companies = write_companies(args.out, company_lines)
 
     for date, n in months.items():
         print(f"best-stocks {date}: {n} rows")
     for rel, n in deciles.items():
         print(f"{rel}: {n} rows")
+    if companies is not None:
+        print(f"{COMPANIES_FILE}: {companies} rows")
+    if companies_error is not None:
+        # Exit 0 on purpose: the repo's Action commits only after a clean
+        # step, and a non-zero exit would hold back the two datasets that did
+        # update. The annotation puts the refusal on the run's summary page.
+        print(f"::warning::companies list not updated: {companies_error}")
     return 0
 
 

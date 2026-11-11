@@ -1,11 +1,12 @@
 # MoatMap open data
 
-Two datasets from [MoatMap](https://moatmap.ai), a stock research site that scores 25,000+ listed companies in 38 markets on Quality, Value and Momentum:
+Three datasets from [MoatMap](https://moatmap.ai), a stock research site that scores 25,000+ listed companies in 38 markets on Quality, Value and Momentum:
 
 1. **The decile tracker**: how the ranking has done out of sample. Each month the universe is split into ten deciles on each score, the deciles are frozen, and their forward returns are published as they happen, losing months included. No backtest, no restatement.
 2. **The monthly Best Stocks lists**: the 25 highest-scoring companies in each country each month, plus a global list for each pillar, since July 2026.
+3. **The covered companies**: every company MoatMap covers, one row each, with its ticker, market, country and sector. Use it to check whether a company is covered, or to join the other two files to a market or sector.
 
-Both are the same numbers the site publishes at [moatmap.ai/decile-tracker](https://moatmap.ai/decile-tracker) and [moatmap.ai/best-stocks](https://moatmap.ai/best-stocks). The methodology is at [moatmap.ai/methodology](https://moatmap.ai/methodology).
+The first two are the same numbers the site publishes at [moatmap.ai/decile-tracker](https://moatmap.ai/decile-tracker) and [moatmap.ai/best-stocks](https://moatmap.ai/best-stocks). The methodology is at [moatmap.ai/methodology](https://moatmap.ai/methodology).
 
 This is research data, not investment advice.
 
@@ -24,6 +25,10 @@ print(summary[summary.rank_field == "moatmap_score"])
 best = pd.read_csv(f"{base}/best-stocks/best-stocks.csv")
 latest = best[best.edition_date == best.edition_date.max()]
 print(latest[latest.new_entry == True][["edition", "rank", "ticker", "name", "moatmap_score"]])
+
+# Is a company covered, and in which market?
+companies = pd.read_csv(f"{base}/companies/companies.csv", keep_default_na=False)
+print(companies[companies.company_name.str.contains("Inditex|Diseño Textil", case=False)])
 ```
 
 The files are plain UTF-8 CSV, so they open in Excel, Google Sheets or R as they are. `datapackage.json` describes every column in the [Frictionless Data](https://specs.frictionlessdata.io/data-package/) format.
@@ -38,6 +43,7 @@ The files are plain UTF-8 CSV, so they open in Excel, Google Sheets or R as they
 | `data/decile-tracker/ai-cohorts-*.csv` | Returns for groups formed on the site's AI review verdict (deep-review picks, neutral, concerns), both scopes. |
 | `data/best-stocks/best-stocks.csv` | Every Best Stocks edition in one file. |
 | `data/best-stocks/editions/YYYY-MM-01.csv` | One file per monthly edition. |
+| `data/companies/companies.csv` | Every company MoatMap covers, one row each. Refreshed once a week, from the week's Saturday scoring. |
 
 ### Decile tracker columns
 
@@ -75,9 +81,24 @@ The AI cohort files carry `cohort_key` and `cohort_label` in place of `decile` a
 
 Each country edition lists companies above a market-cap floor set for that country. The site states the floor on each country's page. Valuation figures the site shows beside each company (market cap, P/E, P/B, dividend yield) come from a third-party data vendor and are not included here.
 
+### Covered companies columns
+
+| Column | Meaning |
+|---|---|
+| `ticker` | The company's home listing, with a Yahoo Finance suffix (`ITX.MC`, `7203.T`). |
+| `company_name` | The listed name. |
+| `native_name` | The name in its home script, for Korean, Japanese, Chinese and Taiwanese companies; empty elsewhere. |
+| `market`, `market_name` | The market of the home listing (`ES`, Spain). |
+| `country` | Where the company is based, which can differ from its market. |
+| `sector` | The sector the company is scored in. For a company listed but not ranked (see `not_ranked`), the sector its data vendor files it under, or empty when there is none. |
+| `other_listings` | The company's other lines the site carries (a second exchange, another share class), separated by `;`. |
+| `not_ranked` | Why the company is listed but not ranked: `fund` (a closed-end fund or investment trust), `investment_company` or `preferred`. Empty for a ranked company. |
+
+**What "covered" means.** MoatMap screens each market every four weeks. A company joins when its market cap is at least US$50 million (lower in three markets: US$25 million in the UK and Canada, US$5 million in Poland) and its shares trade at least US$10,000 a day on average. A handful of companies are kept below those floors by name. Each company appears once, on its home listing. ETFs are not covered; listed funds and investment trusts are listed with `not_ranked` = `fund` but get no score. A company can drop out between screens if it is delisted or stops trading. The file holds no scores, market caps or prices.
+
 ## Updates
 
-A GitHub Action (`.github/workflows/update.yml`) runs `scripts/update.py` every Wednesday and commits whatever the site has published since, so each month's Best Stocks edition is caught while the site still serves it. It reads only MoatMap's public endpoints, so anyone can run it. A past edition never changes, a vintage's deciles are never re-formed, and its returns are fixed once its window closes.
+A GitHub Action (`.github/workflows/update.yml`) runs `scripts/update.py` every Wednesday and commits whatever the site has published since, so each month's Best Stocks edition is caught while the site still serves it, and the covered-companies list is refreshed once a week. It reads only MoatMap's public endpoints, so anyone can run it. A past edition never changes, a vintage's deciles are never re-formed, and its returns are fixed once its window closes.
 
 ## Licence and citation
 
